@@ -1,4 +1,4 @@
-class CVec {
+export class CVec {
     X: number;
     Y: number;
     get LengthSquared(): number {

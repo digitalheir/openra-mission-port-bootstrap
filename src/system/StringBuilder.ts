@@ -22,4 +22,8 @@ export class StringBuilder {
     ToUpper(): string {
         return this.toString().toUpperCase();
     }
+
+    isEmpty(): boolean {
+        return this.sb.length === 0;
+    }
 }

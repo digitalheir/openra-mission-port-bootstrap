@@ -14,6 +14,11 @@ export class ActorReference {
         });
     }
 
+    // for initialization syntax
+    Add(o: TypeHaving) {
+        this.InitDict.Add(o);
+    }
+
     public Save(initFilter?: (any) => boolean): MiniYaml {
         // todo implement
         const ret = new MiniYaml(this.Type);

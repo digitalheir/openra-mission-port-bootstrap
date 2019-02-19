@@ -26,6 +26,8 @@ export function createRectangle(top: number,
     };
 }
 
+export const RectangleFromLTRB = (l: number, r: number, t: number, b: number) => createRectangle(t, r, b, l);
+
 export function isRectangle(o: object): o is Rectangle {
     return o.hasOwnProperty("Height") && typeof o["Height"] === "number" &&
         o.hasOwnProperty("Width") && typeof o["Width"] === "number" &&

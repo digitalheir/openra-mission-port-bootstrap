@@ -23,7 +23,9 @@ export class ReadOnlyDictionary<TKey, TValue> implements IReadOnlyDictionary<TKe
         return new ReadOnlyDictionary<TKey, TValue>(dict);
     }
 
-    readonly Count: number = this.map.size;
+    get Count(): number {
+        return this.map.size
+    };
 
     get Keys(): IterableIterator<TKey> {
         return this.map.keys()

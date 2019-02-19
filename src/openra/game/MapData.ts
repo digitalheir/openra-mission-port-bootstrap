@@ -1,7 +1,7 @@
 import {IniSection} from "../mods/common/fileformats/IniSection";
 import {ActorReference} from "./ActorReference";
 import {createMiniYamlNode, createMiniYamlNodes, MiniYamlNode, MiniYamlNodesWriteToString} from "../MiniYamlNode";
-import {Rectangle} from "../../system/Rectangle";
+import {Rectangle, RectangleFromLTRB} from "../../system/Rectangle";
 import {MapOptions} from "./MapOptions";
 import {FieldSaver} from "./FieldSaver";
 import {SaveLuaData} from "../mods/common/fileformats/lua/generate";
@@ -12,8 +12,13 @@ import {TileSet} from "./map/TileSet";
 import {ModData} from "./ModData";
 import {First, isArray} from "../../system/Array";
 import {FieldLoader, FieldLoadInfo} from "./FieldLoader";
-import {MapGrid} from "./map/MapGrid";
+import {MapGrid, MapGridType} from "./map/MapGrid";
 import {ResourceTile, TerrainTile} from "./map/TileReference";
+import {createMPos, PPos} from "./MPos";
+import {createWPos, WPos} from "./WPos";
+import {ProjectedCellRegion} from "./map/ProjectedCellRegion";
+import {CellLayer} from "./map/CellLayer";
+import {Ruleset} from "./gamerules/Ruleset";
 
 enum MapVisibility {
     Lobby = 1,
@@ -23,10 +28,12 @@ enum MapVisibility {
 
 
 export interface MapData {
-    Grid:MapGrid;
+    FixOpenAreas: () => any;
+    Rules: Ruleset;
+    Grid: MapGrid;
     Visibility: MapVisibility;
     Categories: string[];
-    LockPreview:boolean;
+    LockPreview: boolean;
     MapFormat: number;
     CellTriggers: IniSection;
     Triggers: IniSection;
@@ -53,7 +60,7 @@ export interface MapData {
     Type: string;
     Options: MapOptions;
 
-    modData:ModData;
+    modData: ModData;
 
     PlayerDefinitions: MiniYamlNode[];
     ActorDefinitions: MiniYamlNode[];
@@ -66,6 +73,19 @@ export interface MapData {
     MusicDefinitions: MiniYaml;
     NotificationDefinitions: MiniYaml;
     TranslationDefinitions: MiniYaml;
+
+    SetBounds(tl: PPos, br: PPos);
+
+    ProjectedCellBounds: ProjectedCellRegion;
+    Height: CellLayer;
+
+    /// The top-left of the playable area in projected world coordinates
+    /// This is a hacky workaround for legacy functionality.  Do not use for new code.
+    ProjectedTopLeft: WPos;
+
+    /// The bottom-right of the playable area in projected world coordinates
+    /// This is a hacky workaround for legacy functionality.  Do not use for new code.
+    ProjectedBottomRight: WPos;
 }
 
 export function hello() {
@@ -83,8 +103,8 @@ function isArrayOfMiniYamlNode(field: Array<any>) {
     return field.length > 0 && field[0] instanceof MiniYamlNode;
 }
 
-function determineType(key:keyof MapData): FieldType {
-    switch(key){
+function determineType(key: keyof MapData): FieldType {
+    switch (key) {
         case  "MapFormat":
         case  "RequiresMod":
         case  "Title":
@@ -110,46 +130,51 @@ function determineType(key:keyof MapData): FieldType {
         case "NotificationDefinitions":
         case "TranslationDefinitions":
             return FieldType.MiniYaml;
-        default: throw new Error("Unknown field: "+key);
+        default:
+            throw new Error("Unknown field: " + key);
     }
 }
 
 class MapField {
-readonly  field:FieldLoadInfo;
-/*readonly  property:PropertyInfo;*/
-/*readonly*/  type:FieldType;
+    readonly field: FieldLoadInfo;
+    /*readonly  property:PropertyInfo;*/
+    /*readonly*/
+    type: FieldType;
 
-/*readonly*/ key:string ;
-/*readonly*/ fieldName:keyof MapData;
-/*readonly*/ required:boolean ;
-/*readonly*/ ignoreIfValue:string ;
+    /*readonly*/
+    key: string;
+    /*readonly*/
+    fieldName: keyof MapData;
+    /*readonly*/
+    required: boolean;
+    /*readonly*/
+    ignoreIfValue: string;
 
-constructor(key:string,
-            fieldName:keyof MapData|undefined=undefined,
-            required :boolean= true,
-            ignoreIfValue:string|undefined = undefined)
-{
-    this.key = key;
-    this.fieldName = (fieldName || key) as keyof MapData;
-    const type: FieldType = determineType(this.fieldName);
-    this.required = required;
-    this.ignoreIfValue = ignoreIfValue;
+    constructor(key: string,
+                fieldName: keyof MapData | undefined = undefined,
+                required: boolean = true,
+                ignoreIfValue: string | undefined = undefined) {
+        this.key = key;
+        this.fieldName = (fieldName || key) as keyof MapData;
+        const type: FieldType = determineType(this.fieldName);
+        this.required = required;
+        this.ignoreIfValue = ignoreIfValue;
 
-   this.field =  new FieldLoadInfo(this.fieldName, undefined, this.fieldName); // null; typeof(Map).GetField(this.fieldName);
-   //this.property = null; typeof(Map).GetProperty(this.fieldName);
-   // if (!this.field && !this.property) throw new Error("Map does not have a field/property " + fieldName);
-    // var t = !!this.field ? this.field.FieldType : this.property.PropertyType;
-    this.type = type
+        this.field = new FieldLoadInfo(this.fieldName, undefined, this.fieldName); // null; typeof(Map).GetField(this.fieldName);
+        //this.property = null; typeof(Map).GetProperty(this.fieldName);
+        // if (!this.field && !this.property) throw new Error("Map does not have a field/property " + fieldName);
+        // var t = !!this.field ? this.field.FieldType : this.property.PropertyType;
+        this.type = type
         // t == typeof(isArray(this.field) && isArrayOfMiniYamlNode(this.field))
         // ? FieldType.NodeList : t instanceof MiniYaml ? FieldType.MiniYaml : FieldType.Normal;
-}
-
-public Deserialize(map:MapData, nodes:MiniYamlNode[]) {
-    const node = First(nodes, n => n.Key === this.key);
-    if (!node ) {
-        if (this.required) throw new Error(`Required field ${this.key} not found in map.yaml`);
-        return;
     }
+
+    public Deserialize(map: MapData, nodes: MiniYamlNode[]) {
+        const node = First(nodes, n => n.Key === this.key);
+        if (!node) {
+            if (this.required) throw new Error(`Required field ${this.key} not found in map.yaml`);
+            return;
+        }
 
         switch (this.type) {
             case FieldType.NodeList:
@@ -161,55 +186,52 @@ public Deserialize(map:MapData, nodes:MiniYamlNode[]) {
             default:
                 FieldLoader.LoadField(map, this.fieldName, node.Value.Value);
                 break;
+        }
+    }
+
+    public Serialize(map: MapData, nodes: MiniYamlNode[]) {
+        var value = this.field.Field.GetValue(map);
+        if (this.type == FieldType.NodeList) {
+            var listValue = value as MiniYamlNode[];
+            if (this.required || listValue.length > 0)
+                nodes.push(createMiniYamlNodes(this.key, null, listValue));
+        } else if (this.type == FieldType.MiniYaml) {
+            var yamlValue = value as MiniYaml;
+            if (this.required || (yamlValue != null && (yamlValue.Value != null || yamlValue.Nodes.length > 0)))
+                nodes.push(new MiniYamlNode(this.key, yamlValue));
+        } else {
+            var formattedValue = FieldSaver.FormatValue(value);
+            if (this.required || formattedValue != this.ignoreIfValue)
+                nodes.push(createMiniYamlNode(this.key, formattedValue));
+        }
     }
 }
 
-public Serialize(map:MapData, nodes:MiniYamlNode[]) {
-    var value = this.field.Field.GetValue(map);
-    if (this.type == FieldType.NodeList) {
-        var listValue = value as MiniYamlNode[];
-        if (this.required || listValue.length > 0)
-            nodes.push(createMiniYamlNodes(this.key, null, listValue));
-    }
-    else if (this.type == FieldType.MiniYaml) {
-        var yamlValue = value as MiniYaml;
-        if (this.required || (yamlValue != null && (yamlValue.Value != null || yamlValue.Nodes.length>0)))
-            nodes.push(new MiniYamlNode(this.key, yamlValue));
-    }
-    else
-    {
-        var formattedValue = FieldSaver.FormatValue(value);
-        if (this.required || formattedValue != this.ignoreIfValue)
-            nodes.push(createMiniYamlNode(this.key, formattedValue));
-    }
-}
-}
-
-const YamlFields :MapField[] = [
-        new MapField("MapFormat","MapFormat"),
-        new MapField("RequiresMod","RequiresMod"),
-        new MapField("Title","Title"),
-        new MapField("Author","Author"),
-        new MapField("Tileset","Tileset"),
-        new MapField("MapSize","MapSize"),
-        new MapField("Bounds","Bounds"),
-        new MapField("Visibility","Visibility"),
-        new MapField("Categories","Categories"),
-        new MapField("LockPreview","LockPreview", false,  "False"),
-        new MapField("Players", "PlayerDefinitions"),
-        new MapField("Actors", "ActorDefinitions"),
-        new MapField("Rules", "RuleDefinitions", undefined,  "False"),
-        new MapField("Sequences", "SequenceDefinitions",  false),
-        new MapField("ModelSequences", "ModelSequenceDefinitions",  false),
-        new MapField("Weapons", "WeaponDefinitions",  false),
-        new MapField("Voices", "VoiceDefinitions",  false),
-        new MapField("Music", "MusicDefinitions",  false),
-        new MapField("Notifications", "NotificationDefinitions",  false),
-        new MapField("Translations", "TranslationDefinitions",  false)];
+const YamlFields: MapField[] = [
+    new MapField("MapFormat", "MapFormat"),
+    new MapField("RequiresMod", "RequiresMod"),
+    new MapField("Title", "Title"),
+    new MapField("Author", "Author"),
+    new MapField("Tileset", "Tileset"),
+    new MapField("MapSize", "MapSize"),
+    new MapField("Bounds", "Bounds"),
+    new MapField("Visibility", "Visibility"),
+    new MapField("Categories", "Categories"),
+    new MapField("LockPreview", "LockPreview", false, "False"),
+    new MapField("Players", "PlayerDefinitions"),
+    new MapField("Actors", "ActorDefinitions"),
+    new MapField("Rules", "RuleDefinitions", undefined, "False"),
+    new MapField("Sequences", "SequenceDefinitions", false),
+    new MapField("ModelSequences", "ModelSequenceDefinitions", false),
+    new MapField("Weapons", "WeaponDefinitions", false),
+    new MapField("Voices", "VoiceDefinitions", false),
+    new MapField("Music", "MusicDefinitions", false),
+    new MapField("Notifications", "NotificationDefinitions", false),
+    new MapField("Translations", "TranslationDefinitions", false)];
 
 export class CnCMap implements MapData {
-    Grid:MapGrid;
-
+    Grid: MapGrid;
+    Rules: Ruleset;
     Categories: string[] = ["Conquest"];
     Actors: Map<string, ActorReference> = new Map<string, ActorReference>();
     CellTriggers: IniSection;
@@ -236,10 +258,20 @@ export class CnCMap implements MapData {
     UseAsShellmap: boolean;
     Options: MapOptions;
 
+    Height: CellLayer;
+    ProjectedCellBounds: ProjectedCellRegion;
+    /// The top-left of the playable area in projected world coordinates
+    /// This is a hacky workaround for legacy functionality.  Do not use for new code.
+    ProjectedTopLeft: WPos;
+
+    /// The bottom-right of the playable area in projected world coordinates
+    /// This is a hacky workaround for legacy functionality.  Do not use for new code.
+    ProjectedBottomRight: WPos;
+
     // Yaml map data
     public Players: Map<string, PlayerReference> = new Map();
     public Smudges: SmudgeReference[] = [];
-    ActorDefinitions: MiniYamlNode[];
+    ActorDefinitions: MiniYamlNode[] = [];
     LockPreview: boolean;
     ModelSequenceDefinitions: MiniYaml;
     MusicDefinitions: MiniYaml;
@@ -397,21 +429,68 @@ export class CnCMap implements MapData {
         return RulesAdd;
     }
 
+    SetBounds(tl: PPos, br: PPos) {
+        // The tl and br coordinates are inclusive, but the Rectangle
+        // is exclusive.  Pad the right and bottom edges to match.
+        this.Bounds = RectangleFromLTRB(tl.U, tl.V, br.U + 1, br.V + 1);
+
+        // Directly calculate the projected map corners in world units avoiding unnecessary
+        // conversions.  This abuses the definition that the width of the cell along the x world axis
+        // is always 1024 or 1448 units, and that the height of two rows is 2048 for classic cells and 724
+        // for isometric cells.
+        if (this.Grid.Type == MapGridType.RectangularIsometric) {
+            this.ProjectedTopLeft = createWPos(tl.U * 1448, tl.V * 724, 0);
+            this.ProjectedBottomRight = createWPos(br.U * 1448 - 1, (br.V + 1) * 724 - 1, 0);
+        } else {
+            this.ProjectedTopLeft = createWPos(tl.U * 1024, tl.V * 1024, 0);
+            this.ProjectedBottomRight = createWPos(br.U * 1024 - 1, (br.V + 1) * 1024 - 1, 0);
+        }
+
+        this.ProjectedCellBounds = new ProjectedCellRegion(this, tl, br);
+    }
+
+    FixOpenAreas: () => any = () => {
+        // var r = Math.random();
+        // var tileset = this.Rules.TileSet;
+        //
+        // for (var j = this.Bounds.Top; j < this.Bounds.Bottom; j++)
+        // {
+        //     for (var i = this.Bounds.Left; i < this.Bounds.Right; i++)
+        //     {
+        //         var type = this.Tiles[createMPos(i, j)].Type;
+        //         var index = this.Tiles[createMPos(i, j)].Index;
+        //         if (!tileset.Templates.ContainsKey(type))
+        //         {
+        //             console.warn(`Unknown Tile ID ${type}`);
+        //             continue;
+        //         }
+        //
+        //         var template = tileset.Templates[type];
+        //         if (!template.PickAny)
+        //             continue;
+        //
+        //         index = (byte)r.Next(0, template.TilesCount);
+        //         Tiles[new MPos(i, j)] = new TerrainTile(type, index);
+        //     }
+        // }
+    };
+
 }
 
-export function createMapData(modData: ModData, tileset: TileSet, width: number, height: number): CnCMap {
+export function createMapData(modData: ModData, tileset: TileSet, tilesetId: string, width: number, height: number): CnCMap {
     const map = new CnCMap();
     map.modData = modData;
-    var size: [number,number] = [width, height];
+    var size: [number, number] = [width, height];
     // todo load this like in openra
-    // map.Grid = modData.Manifest.Get<MapGrid>();
-    var tileRef = new TerrainTile(tileset.Templates.Keys.next().value, 0);
+    map.Grid = new MapGrid();
+    // map.Grid = modData.Manifest.Get("MapGrid");
+    // var tileRef = new TerrainTile(tileset.Templates.Keys.next().value, 0);
 
     map.Title = "Name your map here";
     map.Author = "Your name here";
 
     map.MapSize = size;
-    map.Tileset = tileset.Id;
+    map.Tileset = tilesetId;
 
     // Empty rules that can be added to by the importers.
     // Will be dropped on save if nothing is added to it
@@ -420,7 +499,7 @@ export function createMapData(modData: ModData, tileset: TileSet, width: number,
     // todo
     // map.Tiles = new CellLayer<TerrainTile>(Grid.Type, size);
     // map.Resources = new CellLayer<ResourceTile>(Grid.Type, size);
-    // map.Height = new CellLayer<byte>(Grid.Type, size);
+    map.Height = new CellLayer(map.Grid.Type, size);
     // if (map.Grid.MaximumTerrainHeight > 0)
     // {
     //     map.Height.CellEntryChanged += UpdateProjection;

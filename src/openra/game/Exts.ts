@@ -1,6 +1,17 @@
 export enum ISqrtRoundMode { Floor, Nearest, Ceiling }
 
 export const Exts = {
+    ParseByte: (i: string) => {
+        return parseInt(i);
+    },
+    ParseIntegerInvariant: (i: string, def: number = 0): number => {
+        const parsed = parseInt(i);
+        return isFinite(parsed) ? parsed : def;
+    },
+    TryParseIntegerInvariant: (i: string, def: number = 0): number => {
+        const parsed = parseInt(i);
+        return isFinite(parsed) ? parsed : def;
+    },
     ISqrtRoundMode: {Floor: ISqrtRoundMode.Floor, Nearest: ISqrtRoundMode.Nearest, Ceiling: ISqrtRoundMode.Ceiling},
     ISqrt: (number: number, round: ISqrtRoundMode = ISqrtRoundMode.Floor): number => {
         return Math.sqrt(number);

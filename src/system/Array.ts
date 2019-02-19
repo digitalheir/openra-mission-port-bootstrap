@@ -22,3 +22,12 @@ export function First<T>(arr: T[], f: (T) => boolean): T | undefined {
     for (const o of arr) if (f(o)) return o;
     return undefined;
 }
+
+export function symmetricDifference<T>(setA: Set<T>, setB: Set<T>): T[] {
+    const union = new Set([...setA, ...setB]);
+    return Array.from(union).filter(o => setA.has(o) && setB.has(o));
+}
+
+export function intersections<T>(setA: Set<T>, setB: Set<T>): Set<T> {
+    return new Set([...setA].filter(x => setB.has(x)));
+}

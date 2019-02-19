@@ -2,6 +2,7 @@ import {WVec} from "../WVec";
 import {MiniYaml} from "../../MiniYaml";
 import {FieldLoader} from "../FieldLoader";
 import {Exts} from "../Exts";
+import {CVec} from "../CVec";
 
 export enum MapGridType { Rectangular, RectangularIsometric }
 

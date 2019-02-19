@@ -9,9 +9,8 @@ export interface IUtilityCommand {
 
     ValidateArguments(args: string[]): boolean;
 
-    Run(utility: Utility, args: string[]);
+    Run(utility: Utility, args: string[], src: string[]);
 }
-
 
 export class Utility {
     readonly ModData: ModData;

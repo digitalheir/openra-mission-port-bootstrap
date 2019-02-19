@@ -40,7 +40,7 @@ export class PlayerReference {
     /*readonly*/ LockFaction: boolean = false;
     /*readonly*/ Faction: string;
     /*readonly*/ LockColor: boolean = false;
-    // public HSLColor Color = new HSLColor(0, 0, 238);
+    /*public HSLColor */Color:[number, number, number] = /*new HSLColor*/[0, 0, 238];
     /*readonly*/ LockSpawn: boolean = false;
     /*readonly*/ Spawn: number = 0;
     /*readonly*/ LockTeam: boolean = false;

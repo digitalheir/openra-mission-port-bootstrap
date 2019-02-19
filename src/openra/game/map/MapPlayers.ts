@@ -7,7 +7,7 @@ import {FieldSaver} from "../FieldSaver";
 
 export class MapPlayers {
     /*readonly*/
-    Players: Map<string, PlayerReference>;
+    Players: Map<string, PlayerReference> = new Map();
 
     static createMapPlayers(playerDefinitions?: MiniYamlNode[]) {
         const pl = new MapPlayers();
