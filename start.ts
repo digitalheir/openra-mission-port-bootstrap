@@ -5,7 +5,7 @@ import {StringBuilder} from "./src/system/StringBuilder";
 import {addActorsFromIniSection} from "./src/openra/mods/common/fileformats/lua/generateMoves";
 import {CnCMap} from "./src/openra/game/MapData";
 import {MapOptions} from "./src/openra/game/MapOptions";
-import {scg01ea} from "./src/data/scg";
+
 import {ImportRedAlertLegacyMapCommand} from "./src/openra/mods/cnc/utilitycommands/ImportRedAlertLegacyMapCommand";
 import {Utility} from "./src/openra/game/IUtilityCommand";
 import {ModData} from "./src/openra/game/ModData";
@@ -13,6 +13,7 @@ import {InstalledMods} from "./src/openra/game/InstalledMods";
 import {Manifest} from "./src/openra/game/Manifest";
 import {ReadOnlyDictionary} from "./src/openra/game/primitives/ReadOnlyDictionary";
 import {ReadOnlyPackage} from "./src/openra/game/filesystem/IReadOnlyPackage";
+import {scg03ea} from "./src/data/scg";
 
 // console.log("hey");
 
@@ -83,4 +84,4 @@ var installedMods = new InstalledMods();
 const modData = new ModData(manifest, installedMods);
 const mods = new InstalledMods();
 const u = new Utility(modData, mods);
-raImport.Run(u, ["a", "b"], scg01ea.split("\n"));
+raImport.Run(u, ["a", "b"], scg03ea.split("\n"));

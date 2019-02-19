@@ -231,7 +231,7 @@ const YamlFields: MapField[] = [
 
 export class CnCMap implements MapData {
     Grid: MapGrid;
-    Rules: Ruleset;
+    Rules: Ruleset = new Ruleset();
     Categories: string[] = ["Conquest"];
     Actors: Map<string, ActorReference> = new Map<string, ActorReference>();
     CellTriggers: IniSection;

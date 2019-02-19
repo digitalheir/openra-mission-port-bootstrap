@@ -2,14 +2,14 @@
 const path = require("path");
 const plugins = [
     //new CopyWebpackPlugin([
-        // {from: "bower_components", to: "bower_components"},
-        // {
-        //     from: "node_modules/material-components-web/dist/material-components-web.css",
-        //     to: "css/material-components-web.css"
-        // },
-        // {
-        //     from: "src/public"
-        // }
+    // {from: "bower_components", to: "bower_components"},
+    // {
+    //     from: "node_modules/material-components-web/dist/material-components-web.css",
+    //     to: "css/material-components-web.css"
+    // },
+    // {
+    //     from: "src/public"
+    // }
     //])
 ];
 
@@ -47,6 +47,10 @@ const config = {
             //     loader: "tslint-loader",
             //     exclude: /node_modules/
             // },
+            {
+                test: /\.ini$/i,
+                use: 'raw-loader'
+            },
             {
                 test: /\.tsx?$/,
                 loader: "awesome-typescript-loader",

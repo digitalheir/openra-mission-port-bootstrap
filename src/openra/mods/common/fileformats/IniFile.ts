@@ -55,9 +55,12 @@ function ProcessEntry(line0: string, currentSection: IniSection): boolean {
     let key = line;
     let value = "";
     const eq = line.indexOf('=');
+
     if (eq >= 0) {
         key = line.substring(0, eq).trim();
-        value = line.substring(eq + 1, line.length - eq - 1).trim();
+        value = line.substring(eq + 1).trim();
+        // console.log(`${eq}|${line}`);
+        // console.log(`${key} : ${value}`)
     }
     if (currentSection == null) throw Error("No current INI section");
     if (!currentSection.Contains(key)) currentSection.Add(key, value);

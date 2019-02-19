@@ -22,6 +22,8 @@
     "outDir": "ts-dist"
   },
   "include": [
+    "src/**/*.d.ts",
+    "src/**/*.ini",
     "src/**/*.ts",
     "src/**/*.tsx"
   ],

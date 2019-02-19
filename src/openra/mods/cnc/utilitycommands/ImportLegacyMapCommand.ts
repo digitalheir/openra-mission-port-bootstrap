@@ -63,6 +63,7 @@ export abstract class ImportLegacyMapCommand {
         const filename = args[1];
         const file = new IniFile(src);
         const basic = file.GetSection("Basic");
+        console.log(basic);
 
         const player = basic.GetValue("Player", "");
         if (!player) this.singlePlayer = !player.startsWith("Multi");
@@ -115,6 +116,8 @@ export abstract class ImportLegacyMapCommand {
         // todo save state
         // Map.Save(ZipFileLoader.Create(dest));
         console.log(dest + " saved.");
+
+        console.log(JSON.stringify(this.Map));
     }
 
     static SetBounds(map: MapData, mapSection: IniSection) {
@@ -289,14 +292,16 @@ export abstract class ImportLegacyMapCommand {
 
                 let actorCount = map.ActorDefinitions.length;
 
-                if (!map.Rules.Actors.ContainsKey(parts[1].toLowerCase()))
-                    console.log(`Ignoring unknown actor type: \`${parts[1].toLowerCase()}\``);
-                else {
-                    map.ActorDefinitions.push(new MiniYamlNode("Actor" + (actorCount), actor.Save()));
-                    actorCount++;
-                }
-            } catch (Exception) {
+                // todo should these actors types be added through mod somehow like in openra?
+                // if (!map.Rules.Actors.ContainsKey(parts[1].toLowerCase()))
+                //     console.log(`Ignoring unknown actor type: \`${parts[1].toLowerCase()}\``);
+                // else {
+                map.ActorDefinitions.push(new MiniYamlNode("Actor" + (actorCount), actor.Save()));
+                actorCount++;
+                //}
+            } catch (e) {
                 console.error(`Malformed actor definition: \`${sKey + ":" + sValue}\``);
+                console.error(e);
             }
         });
     }
