@@ -1,5 +1,5 @@
 import {ModData} from "../../../game/ModData";
-import {createMapData, MapData} from "../../../game/MapData";
+import {CnCMap, createMapData, MapData} from "../../../game/MapData";
 import {MapPlayers} from "../../../game/map/MapPlayers";
 import {Utility} from "../../../game/IUtilityCommand";
 import {Game} from "../../../game/Game";
@@ -45,7 +45,7 @@ export abstract class ImportLegacyMapCommand {
     }
 
     ModData: ModData;
-    Map: MapData;
+    Map: CnCMap;
     Players: string[] = [];
     MapPlayers: MapPlayers;
     singlePlayer: boolean;
@@ -55,7 +55,7 @@ export abstract class ImportLegacyMapCommand {
         return args.length >= 2;
     }
 
-    Run(utility: Utility, args: string[], src: string[]) {
+    Run(utility: Utility, args: string[], src: string[]): CnCMap {
         // HACK: The engine code assumes that Game.modData is set.
         Game.ModData = utility.ModData;
         this.ModData = utility.ModData;
@@ -63,7 +63,7 @@ export abstract class ImportLegacyMapCommand {
         const filename = args[1];
         const file = new IniFile(src);
         const basic = file.GetSection("Basic");
-        console.log(basic);
+        // console.log(basic);
 
         const player = basic.GetValue("Player", "");
         if (!player) this.singlePlayer = !player.startsWith("Multi");
@@ -115,9 +115,9 @@ export abstract class ImportLegacyMapCommand {
 
         // todo save state
         // Map.Save(ZipFileLoader.Create(dest));
-        console.log(dest + " saved.");
-
-        console.log(JSON.stringify(this.Map));
+        // console.log(dest + " saved.");
+        // console.log(JSON.stringify(this.Map));
+        return this.Map;
     }
 
     static SetBounds(map: MapData, mapSection: IniSection) {
@@ -300,7 +300,7 @@ export abstract class ImportLegacyMapCommand {
                 actorCount++;
                 //}
             } catch (e) {
-                console.error(`Malformed actor definition: \`${sKey + ":" + sValue}\``);
+                map.Logger.e(`Malformed actor definition: \`${sKey + ":" + sValue}\``);
                 console.error(e);
             }
         });
@@ -359,7 +359,7 @@ export abstract class ImportLegacyMapCommand {
 
         // Add waypoint actors skipping duplicate entries
         const distincWaypoints = wps; // todo .DistinctBy(location => location.Second);
-        console.log(distincWaypoints);
+        // console.log(distincWaypoints);
         for (var kv of distincWaypoints) {
             if (!this.singlePlayer && kv[0] <= 7) {
                 var ar = new ActorReference("mpspawn");
@@ -407,8 +407,9 @@ export abstract class ImportLegacyMapCommand {
                     pr.Enemies = (symmetricDifference(playerSet, new Set(sValue.split(','))))
                         .filter(e => e !== "Neutral");
                     break;
+
                 default:
-                    console.log(`Ignoring unknown ${sKey}=${sValue} for player ${pr.Name}`);
+                    console.warn(`Ignoring unknown ${sKey}=${sValue} for player ${pr.Name}`);
                     break;
             }
         });

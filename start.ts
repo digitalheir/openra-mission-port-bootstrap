@@ -18,49 +18,49 @@ import {scg03ea} from "./src/data/scg";
 // console.log("hey");
 
 
-export function createCnCMap(f: IniFile) {
-    let map = new CnCMap();
-    map.Title = "Name your map here";
-    map.Description = "Describe your map here";
-    map.Author = "Your name here";
-    map.MapSize = [128, 128];
-// map.    Tileset = tileset.Id;
-    map.Options = new MapOptions();
-// map.    MapResources = Exts.Lazy(() => new CellLayer<ResourceTile>(tileShape, size)),;
-// map.    MapTiles = makeMapTiles,;
-    map.Actors = new Map();
-    map.Smudges = [];
-    f.sections.forEach((value, sectionName) => {
-        switch (sectionName) {
-            case 'units':
-                map.Units = value;
-                break;
-            case 'infantry':
-                map.Infantry = value;
-                break;
-            case 'structures':
-                map.Structures = value;
-                break;
-            case 'terrain':
-            case 'smudge':
-                // todo
-                break;
-            case 'triggers':
-                map.Triggers = value;
-                break;
-            case 'celltriggers':
-                map.CellTriggers = value;
-                // console.log(value.values.keys());
-                break;
-            case 'teamtypes':
-                map.TeamTypes = value;
-                break;
-            default:
-                break;
-        }
-    });
-    return map;
-}
+// export function createCnCMap(f: IniFile): CnCMap {
+//     let map = new CnCMap();
+//     map.Title = "Name your map here";
+//     map.Description = "Describe your map here";
+//     map.Author = "Your name here";
+//     map.MapSize = [128, 128];
+// // map.    Tileset = tileset.Id;
+//     map.Options = new MapOptions();
+// // map.    MapResources = Exts.Lazy(() => new CellLayer<ResourceTile>(tileShape, size)),;
+// // map.    MapTiles = makeMapTiles,;
+//     map.Actors = new Map();
+//     map.Smudges = [];
+//     f.sections.forEach((value, sectionName) => {
+//         switch (sectionName) {
+//             case 'units':
+//                 map.Units = value;
+//                 break;
+//             case 'infantry':
+//                 map.Infantry = value;
+//                 break;
+//             case 'structures':
+//                 map.Structures = value;
+//                 break;
+//             case 'terrain':
+//             case 'smudge':
+//                 // todo
+//                 break;
+//             case 'triggers':
+//                 map.Triggers = value;
+//                 break;
+//             case 'celltriggers':
+//                 map.CellTriggers = value;
+//                 // console.log(value.values.keys());
+//                 break;
+//             case 'teamtypes':
+//                 map.TeamTypes = value;
+//                 break;
+//             default:
+//                 break;
+//         }
+//     });
+//     return map;
+// }
 
 
 // const f = new IniFile(scg01ea.split("\n"));
@@ -79,7 +79,7 @@ const Actors: Map<string, ActorReference> = new Map();
 
 
 const raImport = new ImportRedAlertLegacyMapCommand();
-var manifest = new Manifest("myMod", new ReadOnlyPackage("readonlypack", []));
+var manifest = new Manifest("*EnterModHere*", new ReadOnlyPackage("readonlypack", []));
 var installedMods = new InstalledMods();
 const modData = new ModData(manifest, installedMods);
 const mods = new InstalledMods();

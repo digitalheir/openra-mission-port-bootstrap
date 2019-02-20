@@ -1,5 +1,6 @@
 import {ModData} from "./ModData";
 import {InstalledMods} from "./InstalledMods";
+import {CnCMap} from "./MapData";
 
 export interface IUtilityCommand {
     /**
@@ -9,7 +10,7 @@ export interface IUtilityCommand {
 
     ValidateArguments(args: string[]): boolean;
 
-    Run(utility: Utility, args: string[], src: string[]);
+    Run(utility: Utility, args: string[], src: string[]): CnCMap;
 }
 
 export class Utility {

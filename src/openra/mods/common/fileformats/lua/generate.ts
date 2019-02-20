@@ -13,7 +13,8 @@ function generateLuaTriggers(map: MapData, sb: StringBuilder) {
 
     const {playerValue, player, enemy} = map;
 
-    map.Triggers.values.forEach((trigger, key) => {
+    const triggers = map.Triggers;
+    if (triggers) triggers.values.forEach((trigger, key) => {
         const triggerParams: string[] = trigger.split(',');
 
         // Array with units, which call triggers with name triggerName
@@ -36,6 +37,7 @@ function generateLuaTriggers(map: MapData, sb: StringBuilder) {
                 break;
         }
     });
+    else map.Logger.e("Triggers not set!");
 }
 
 export function SaveLuaData(map: MapData): string {
@@ -51,26 +53,33 @@ export function SaveLuaData(map: MapData): string {
     // Add default spawn point
     sb.AppendLine("-- standard spawn point");
     sb.AppendLine("SPAWNPOINT = { waypoint27.Location }");
+    sb.AppendLine();
 
     // Generate cell triggers
     sb.Append("-- Cell triggers arrays");
     sb.AppendLine();
 
-    map.CellTriggers.values.forEach((cellValue, cellKey) => {
+    const cellTriggers = map.CellTriggers;
+    if (cellTriggers) cellTriggers.values.forEach((cellValue, cellKey) => {
         if (!outputCells.has(cellValue)) {
             const l = [];
             l.push(cellKey);
             outputCells.set(cellValue, l);
         } else {
-            outputCells[cellValue].push(cellKey);
+            if (!outputCells.has(cellValue)) {
+                map.Logger.e(`${cellValue} not found in outputCells`);
+            }
+            outputCells.get(cellValue).push(cellKey);
         }
     });
+    else map.Logger.e("CellTriggers not set!");
 
     outputCells.forEach((tempValue, tempKey) => {
         sb.Append(tempKey.toUpperCase() + "_CELLTRIGGERS = {");
         let counter = 1;
-        for (const x of outputCells[tempKey]) {
-            if (counter < outputCells[tempKey].Count) {
+        for (const x of tempValue) {
+            if (!tempValue) console.error(`${tempKey} not found in outputCells`);
+            if (counter < tempValue.length) {
                 sb.Append("CPos.New(" + recalculatePosition(parseInt(x)) + "), ");
                 counter++;
             } else {

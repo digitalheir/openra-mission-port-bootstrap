@@ -10,15 +10,15 @@ import {SmudgeReference} from "./map/SmudgeReference";
 import {MiniYaml} from "../MiniYaml";
 import {TileSet} from "./map/TileSet";
 import {ModData} from "./ModData";
-import {First, isArray} from "../../system/Array";
+import {First} from "../../system/Array";
 import {FieldLoader, FieldLoadInfo} from "./FieldLoader";
 import {MapGrid, MapGridType} from "./map/MapGrid";
-import {ResourceTile, TerrainTile} from "./map/TileReference";
-import {createMPos, PPos} from "./MPos";
+import {PPos} from "./MPos";
 import {createWPos, WPos} from "./WPos";
 import {ProjectedCellRegion} from "./map/ProjectedCellRegion";
 import {CellLayer} from "./map/CellLayer";
 import {Ruleset} from "./gamerules/Ruleset";
+import {createLog, Logger, LogLevel} from "../../system/Logger";
 
 enum MapVisibility {
     Lobby = 1,
@@ -26,8 +26,23 @@ enum MapVisibility {
     MissionSelector = 4
 }
 
+const fieldsToSave: (keyof MapData)[] = [
+    "Selectable",
+    "MapFormat",
+    "RequiresMod",
+    "Title",
+    "Description",
+    "Author",
+    "PreviewVideo",
+    "Tileset",
+    "MapSize",
+    "Bounds",
+    "UseAsShellmap",
+    "Type",];
+
 
 export interface MapData {
+    Logger: Logger;
     FixOpenAreas: () => any;
     Rules: Ruleset;
     Grid: MapGrid;
@@ -86,10 +101,6 @@ export interface MapData {
     /// The bottom-right of the playable area in projected world coordinates
     /// This is a hacky workaround for legacy functionality.  Do not use for new code.
     ProjectedBottomRight: WPos;
-}
-
-export function hello() {
-    console.log("Hello.");
 }
 
 interface MissionDataFiles {
@@ -229,7 +240,24 @@ const YamlFields: MapField[] = [
     new MapField("Notifications", "NotificationDefinitions", false),
     new MapField("Translations", "TranslationDefinitions", false)];
 
+const logsLogged = [];
+
 export class CnCMap implements MapData {
+    Logger: Logger = {
+        logs: logsLogged,
+        e: (s) => {
+            console.error(s);
+            logsLogged.push(createLog(LogLevel.Error, s));
+        },
+        w: (s) => {
+            console.warn(s);
+            logsLogged.push(createLog(LogLevel.Warn, s));
+        },
+        i: (s) => {
+            console.log(s);
+            logsLogged.push(createLog(LogLevel.Info, s));
+        }
+    };
     Grid: MapGrid;
     Rules: Ruleset = new Ruleset();
     Categories: string[] = ["Conquest"];
@@ -244,7 +272,7 @@ export class CnCMap implements MapData {
     Waypoints: IniSection;
     enemy: string;
     player: string;
-    playerValue: string;
+    playerValue: string = "GoodGuy";
     Selectable: boolean = true;
     Type: string = "Conquest";
     Author: string;
@@ -256,7 +284,7 @@ export class CnCMap implements MapData {
     Tileset: string;
     Title: string;
     UseAsShellmap: boolean;
-    Options: MapOptions;
+    Options: MapOptions = new MapOptions();
 
     Height: CellLayer;
     ProjectedCellBounds: ProjectedCellRegion;
@@ -275,101 +303,90 @@ export class CnCMap implements MapData {
     LockPreview: boolean;
     ModelSequenceDefinitions: MiniYaml;
     MusicDefinitions: MiniYaml;
-    NotificationDefinitions: MiniYaml;
+    NotificationDefinitions: MiniYaml = new MiniYaml("");
     PlayerDefinitions: MiniYamlNode[];
     RuleDefinitions: MiniYaml;
-    SequenceDefinitions: MiniYaml;
-    TranslationDefinitions: MiniYaml;
+    SequenceDefinitions: MiniYaml = new MiniYaml("");
+    TranslationDefinitions: MiniYaml = new MiniYaml("");
     Visibility: MapVisibility;
-    VoiceDefinitions: MiniYaml;
-    WeaponDefinitions: MiniYaml;
+    VoiceDefinitions: MiniYaml = new MiniYaml("");
+    WeaponDefinitions: MiniYaml = new MiniYaml("");
     modData: ModData;
+
     /// <summary>Defines the order of the fields in map.yaml</summary>
 
-    // save(): MissionDataFiles {
-    //     this.MapFormat = 6;
-    //     const root: MiniYamlNode[] = [];
-    //     const fields: (keyof MapData)[] = ["Selectable",
-    //         "MapFormat",
-    //         "RequiresMod",
-    //         "Title",
-    //         "Description",
-    //         "Author",
-    //         "PreviewVideo",
-    //         "Tileset",
-    //         "MapSize",
-    //         "Bounds",
-    //         "UseAsShellmap",
-    //         "Type",];
-    //
-    //     fields.forEach(field => {
-    //         const v = this[field];
-    //         if (v) root.push(createMiniYamlNode(field, FieldSaver.FormatValue(v)));
-    //     });
-    //
-    //     // MapOptions newOptions = new MapOptions();
-    //     this.Options.Crates = (false);
-    //     this.Options.Fog = (true);
-    //     this.Options.Shroud = (true);
-    //     this.Options.AllyBuildRadius = (false);
-    //     this.Options.FragileAlliances = (false);
-    //     this.Options.StartingCash = (0);
-    //     this.Options.ConfigurableStartingUnits = (false);
-    //
-    //     root.push(new MiniYamlNode("Options", FieldSaver.SaveDifferencesOptions(this.Options, new MapOptions())));
-    //
-    //     const playersYaml: MiniYamlNode[] = [];
-    //     this.Players.forEach((p, pKey) =>
-    //         playersYaml.push(new MiniYamlNode(`PlayerReference@${pKey}`, FieldSaver.SaveDifferencesPlayerReference(p, new PlayerReference()))));
-    //     root.push(new MiniYamlNode("Players", new MiniYaml(null, playersYaml)));
-    //
-    //     const actorsYaml: MiniYamlNode[] = [];
-    //     this.Actors.forEach((xValue, xKey) => new MiniYamlNode(xKey, xValue.Save()));
-    //     root.push(new MiniYamlNode("Actors", new MiniYaml(null, actorsYaml)));
-    //
-    //     // todo implement this stuff in typescript?
-    //     // root.push(new MiniYamlNode("Smudges", MiniYaml.FromList<SmudgeReference>(Smudges.Value)));
-    //     root.push(new MiniYamlNode("Rules", new MiniYaml(null, this.AddRules())));
-    //     root.push(new MiniYamlNode("Sequences", new MiniYaml(null, this.SequenceDefinitions)));
-    //     root.push(new MiniYamlNode("VoxelSequences", new MiniYaml(null, this.VoxelSequenceDefinitions)));
-    //     root.push(new MiniYamlNode("Weapons", new MiniYaml(null, this.WeaponDefinitions)));
-    //     root.push(new MiniYamlNode("Voices", new MiniYaml(null, this.VoiceDefinitions)));
-    //     root.push(new MiniYamlNode("Notifications", new MiniYaml(null, this.NotificationDefinitions)));
-    //     root.push(new MiniYamlNode("Translations", new MiniYaml(null, this.TranslationDefinitions)));
-    //
-    //     const entries = new Map<string, string>();
-    //     // entries.set("map.bin", SaveBinaryData()); // todo implement this stuff in typescript?
-    //     const s = MiniYamlNodesWriteToString(root);
-    //     entries.set("map.yaml", s);
-    //     const lua = SaveLuaData(this);
-    //     // entries.set("map.lua", luaData);
-    //
-    //     // todo implement this stuff in typescript?
-    //     // // Add any custom assets
-    //     // if (Container != null) {
-    //     //     foreach(var file in Container.AllFileNames() ) {
-    //     //         if (file == "map.bin" || file == "map.yaml")
-    //     //             continue;
-    //     //
-    //     //         entries.Add(file, Container.GetContent(file).ReadAllBytes());
-    //     //     }
-    //     // }
-    //
-    //     // // Saving the map to a new location
-    //     // if (toPath != Path) {
-    //     //     Path = toPath;
-    //     //
-    //     //     // Create a new map package
-    //     //     Container = GlobalFileSystem.CreatePackage(Path, int.MaxValue, entries);
-    //     // }
-    //     //
-    //     // // Update existing package
-    //     // Container.Write(entries);
-    //     return {
-    //         yaml: s,
-    //         lua
-    //     };
-    // }
+    save(): MissionDataFiles {
+        this.MapFormat = 6;
+        const root: MiniYamlNode[] = [];
+        fieldsToSave.forEach(field => {
+            const v = this[field];
+            if (v) root.push(createMiniYamlNode(field, FieldSaver.FormatValue(v)));
+            else console.warn(`Field ${field} not found.`);
+        });
+
+        // MapOptions newOptions = new MapOptions();
+        this.Options.Crates = (false);
+        this.Options.Fog = (true);
+        this.Options.Shroud = (true);
+        this.Options.AllyBuildRadius = (false);
+        this.Options.FragileAlliances = (false);
+        this.Options.StartingCash = (0);
+        this.Options.ConfigurableStartingUnits = (false);
+
+        root.push(new MiniYamlNode("Options", FieldSaver.SaveDifferencesOptions(this.Options, new MapOptions())));
+
+        const playersYaml: MiniYamlNode[] = [];
+        this.Players.forEach((p, pKey) =>
+            playersYaml.push(new MiniYamlNode(`PlayerReference@${pKey}`, FieldSaver.SaveDifferencesPlayerReference(p, new PlayerReference()))));
+        root.push(new MiniYamlNode("Players", new MiniYaml(null, playersYaml)));
+
+        const actorsYaml: MiniYamlNode[] = [];
+        this.Actors.forEach((xValue, xKey) => new MiniYamlNode(xKey, xValue.Save()));
+        root.push(new MiniYamlNode("Actors", new MiniYaml(null, actorsYaml)));
+
+        // todo implement this stuff in typescript?
+        // root.push(new MiniYamlNode("Smudges", MiniYaml.FromList(Smudges.Value)));
+        root.push(new MiniYamlNode("Rules", new MiniYaml(null, this.AddRules())));
+        root.push(new MiniYamlNode("Sequences", new MiniYaml(null, this.SequenceDefinitions.Nodes)));
+        // root.push(new MiniYamlNode("VoxelSequences", new MiniYaml(null, this.VoxelSequenceDefinitions)));
+        root.push(new MiniYamlNode("Weapons", new MiniYaml(null, this.WeaponDefinitions.Nodes)));
+        root.push(new MiniYamlNode("Voices", new MiniYaml(null, this.VoiceDefinitions.Nodes)));
+        root.push(new MiniYamlNode("Notifications", new MiniYaml(null, this.NotificationDefinitions.Nodes)));
+        root.push(new MiniYamlNode("Translations", new MiniYaml(null, this.TranslationDefinitions.Nodes)));
+
+        const entries = new Map<string, string>();
+        // entries.set("map.bin", SaveBinaryData()); // todo implement this stuff in typescript?
+        const s = MiniYamlNodesWriteToString(root);
+        entries.set("map.yaml", s);
+        const lua = SaveLuaData(this);
+        // entries.set("map.lua", luaData);
+
+        // todo implement this stuff in typescript?
+        // // Add any custom assets
+        // if (Container != null) {
+        //     foreach(var file in Container.AllFileNames() ) {
+        //         if (file == "map.bin" || file == "map.yaml")
+        //             continue;
+        //
+        //         entries.Add(file, Container.GetContent(file).ReadAllBytes());
+        //     }
+        // }
+
+        // // Saving the map to a new location
+        // if (toPath != Path) {
+        //     Path = toPath;
+        //
+        //     // Create a new map package
+        //     Container = GlobalFileSystem.CreatePackage(Path, int.MaxValue, entries);
+        // }
+        //
+        // // Update existing package
+        // Container.Write(entries);
+        return {
+            yaml: s,
+            lua
+        };
+    }
 
     AddRules(): MiniYamlNode[] {
         const RulesAdd: MiniYamlNode[] = [];

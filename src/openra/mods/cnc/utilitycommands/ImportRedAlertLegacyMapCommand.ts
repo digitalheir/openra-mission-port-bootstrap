@@ -1,6 +1,7 @@
 import {IUtilityCommand, Utility} from "../../../game/IUtilityCommand";
 import {ImportLegacyMapCommand} from "./ImportLegacyMapCommand";
 import {IniFile} from "../../common/fileformats/IniFile";
+import {CnCMap} from "../../../game/MapData";
 
 export class ImportRedAlertLegacyMapCommand extends ImportLegacyMapCommand implements IUtilityCommand {
     // TODO: 128x128 is probably not true for "mega maps" from the expansions.
@@ -10,8 +11,8 @@ export class ImportRedAlertLegacyMapCommand extends ImportLegacyMapCommand imple
 
     readonly Name: string = "--import-ra-map";
 
-    Run(utility: Utility, args: string[], src: string[]) {
-        super.Run(utility, args, src)
+    Run(utility: Utility, args: string[], src: string[]): CnCMap {
+        return super.Run(utility, args, src)
     }
 
     ValidateArguments(args: string[]): boolean {
