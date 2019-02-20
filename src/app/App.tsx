@@ -27,6 +27,9 @@ export const ScriptRenderComponent: React.FunctionComponent<RProps> = (initialSt
         <h1>OpenRA Mission port bootstrap</h1>
         <section>
             <h2>Source .ini</h2>
+            From <select disabled={true}>
+            <option>Red Alert</option>
+        </select>
             <textarea defaultValue={state.iniInput} className="input-ini" onChange={(e) => {
                 setState({iniInput: e.target.value});
             }}/>
